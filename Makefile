@@ -13,7 +13,7 @@ LDFLAGS += -L${SDSL_ROOT}/lib -lsdsl -ldivsufsort -ldivsufsort64
 ifeq (${STATIC}, 1)
 	LDFLAGS += -static -static-libgcc -pthread -lhts -lz
 else
-	LDFLAGS += -lhts -lz -Wl
+	LDFLAGS += -lhts -lz
 endif
 
 ifeq (${DEBUG}, 1)
@@ -38,9 +38,9 @@ all:  $(TARGETS)
 
 .sdsl: $(SDSLSOURCES)
 
-	cd src/sdsl-lite/ && ./install.sh ${PBASE}src/sdsl-lite && cd ../../ && touch .sdsl
+	cd src/sdsl-lite/ && ./install.sh ${PBASE}/src/sdsl-lite && cd ../../ && touch .sdsl
 
-src/fqreader: $(SOURCES)
+src/fqreader: .sdsl $(SOURCES)
 	$(CXX) $(CXXFLAGS) $@.cpp -o $@ $(LDFLAGS)
 
 clean:
