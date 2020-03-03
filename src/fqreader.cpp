@@ -72,6 +72,7 @@ int main(int argc, char **argv)
   
   }
 
+  kmdump.close()
   std::cout << "Processed " << n << " sequences" << '\n';
   construct(fmi,"kmers.txt", 1);
   store_to_file(fmi,"kmers.fm");
