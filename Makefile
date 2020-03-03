@@ -11,9 +11,9 @@ CXXFLAGS += -std=c++11 -O3 -DNDEBUG -I ${SDSL_ROOT}/include -pedantic -W -Wall
 LDFLAGS += -L${SDSL_ROOT}/lib -lsdsl -ldivsufsort -ldivsufsort64
 
 ifeq (${STATIC}, 1)
-	LDFLAGS += -static -static-libgcc -pthread -lhts -lz
+	LDFLAGS += -static -static-libgcc -pthread -lz
 else
-	LDFLAGS += -lhts -lz
+	LDFLAGS += -lz
 endif
 
 ifeq (${DEBUG}, 1)
@@ -44,4 +44,4 @@ src/fqreader: .sdsl $(SOURCES)
 	$(CXX) $(CXXFLAGS) $@.cpp -o $@ $(LDFLAGS)
 
 clean:
-	cd src/sdsl-lite/ && ./uninstall.sh && cd ../../
+	cd src/sdsl-lite/ && ./uninstall.sh && cd ../../ && rm .sdsl
