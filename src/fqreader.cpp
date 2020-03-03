@@ -46,7 +46,9 @@ int main(int argc, char **argv)
     std::string s = seq->seq.s;
     std::transform(s.begin(), s.end(), s.begin(), ::toupper);
     
-    std::string q = seq->qual.s;
+    //do something with qualities?
+
+    //std::string q = seq->qual.s;
 
     for (int i = 0; i <= s.length() - kmer; i++) {
 
