@@ -24,27 +24,23 @@ else ifeq (${DEBUG}, 2)
 else
 	CXXFLAGS += -O3 -fno-tree-vectorize -DNDEBUG
 endif
-ifeq (${SDSL_ROOT}, ${PWD}/src/sdsl-lite/)
-	SUBMODULES += .sdsl
-endif
 
 
 # External sources
 SDSLSOURCES = $(wildcard src/sdsl-lite/lib/*.cpp)
-SOURCES = $(wildcard src/*.cpp) $(wildcard src/*.h)
+SOURCES = $(wildcard src/*.h) $(wildcard src/*.cpp) 
 PBASE=$(shell pwd)
 
 # Targets
-BUILT_PROGRAMS = src/fqreader
-TARGETS = ${SUBMODULES} ${BUILT_PROGRAMS}
+TARGETS =.sdsl src/fqreader
 
 all:  $(TARGETS)
 
 .sdsl: $(SDSLSOURCES)
 
-	cd src/sdsl-lite/ && ./install.sh ${PBASE}/src/sdsl-lite && cd ../../ && touch .sdsl
+	cd src/sdsl-lite/ && ./install.sh ${PBASE}src/sdsl-lite && cd ../../ && touch .sdsl
 
-src/fqreader: ${SUBMODULES} $(SOURCES)
+src/fqreader: $(SOURCES)
 	$(CXX) $(CXXFLAGS) $@.cpp -o $@ $(LDFLAGS)
 
 clean:
