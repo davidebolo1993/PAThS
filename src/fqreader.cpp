@@ -47,7 +47,6 @@ int main(int argc, char **argv)
     std::transform(s.begin(), s.end(), s.begin(), ::toupper);
     
     //do something with qualities?
-
     //std::string q = seq->qual.s;
 
     for (int i = 0; i <= s.length() - kmer; i++) {
@@ -72,10 +71,11 @@ int main(int argc, char **argv)
   
   }
 
-
   std::cout << std::endl << "Processed " << n << " sequences" << '\n';
+
   kseq_destroy(seq);
   gzclose(fp);
+  
 
   return 0;
 }
