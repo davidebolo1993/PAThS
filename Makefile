@@ -31,7 +31,7 @@ SDSLSOURCES = $(wildcard src/sdsl-lite/lib/*.cpp)
 SOURCES = $(wildcard src/*.h) $(wildcard src/*.cpp) 
 PBASE=$(shell pwd)
 
-# Targets
+# Target
 TARGETS =.sdsl src/paths
 
 all:  $(TARGETS)
