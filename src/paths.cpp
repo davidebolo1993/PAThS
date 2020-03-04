@@ -15,19 +15,37 @@ inline void displayUsage() {
   std::cout << std::endl;
 }
 
+inline void asciiArt() {
+
+  std::cout << std::endl;
+  std::cout << std::endl;
+  std::cout << "########     ###    ######## ##         ######  " << std::endl;
+  std::cout << "##     ##   ## ##      ##    ##        ##    ## " << std::endl;
+  std::cout << "##     ##  ##   ##     ##    ##  ###   ##       " << std::endl;
+  std::cout << "########  ##     ##    ##    ###   ###  ######  " << std::endl;
+  std::cout << "##        #########    ##    ##     ##       ## " << std::endl;
+  std::cout << "##        ##     ##    ##    ##     ## ##    ## " << std::endl;
+  std::cout << "##        ##     ##    ##    ##     ##  ######  " << std::endl;
+  std::cout << std::endl;
+  std::cout << std::endl;
+}
+
 
 int main(int argc, char **argv) {
   
   std::string pathsversion = "0.1dirty";
   if (argc < 2) { 
+    asciiArt();
     displayUsage();
     return 0;
   }  
   if ((std::string(argv[1]) == "version") || (std::string(argv[1]) == "--version") || (std::string(argv[1]) == "--version-only") || (std::string(argv[1]) == "-v")) {
+    asciiArt();
     std::cout << "paths version: v" << pathsversion << std::endl;
     return 0;
   }
   else if ((std::string(argv[1]) == "help") || (std::string(argv[1]) == "--help") || (std::string(argv[1]) == "-h") || (std::string(argv[1]) == "-?")) {
+    asciiArt();
     displayUsage();
     return 0;
   }
