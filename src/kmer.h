@@ -83,7 +83,7 @@ int kmers(int argc, char **argv)
   ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.dumpfile)->default_value("kmers.txt"), "output unique k-mers list")
   ("output,o", boost::program_options::value<boost::filesystem::path>(&c.outfile)->default_value("kmers.fm"), "output unique k-mers FM index")
   ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ list")
-  ("kmer,k", boost::program_options::value<int>(&c.kmerlength)->default_value(27), "k-mers length")
+  ("kmer,k", boost::program_options::value<int>(&c.kmerlength)->default_value(61), "k-mers length")
   ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers")
   ;
 
@@ -122,7 +122,7 @@ int kmers(int argc, char **argv)
     return 0;
   }
 
-  // Generate FM index of k-mers from FASTQ/FASTA
+  // Generate FM index of k-mers from FASTQ
 
   csa_wt<> fmi;
   std::unordered_set<std::string> set;
@@ -132,7 +132,7 @@ int kmers(int argc, char **argv)
 
   if (vm.count("list")) {
 
-    //open multiple input file (can be gzipped or not, can be FASTA or FASTQ), one per time, and store unique k-mers for all of them in the same FM index
+    //open multiple input files (can be gzipped or not), one per time, and store unique k-mers for all of them in the same FM index
 
     std::ifstream inlist(c.infilelist.string().c_str());
 
@@ -185,12 +185,12 @@ int kmers(int argc, char **argv)
 
   else {
 
-    //open single input file (can be gzipped or not, can be FASTA or FASTQ)
+    //open single input file (can be gzipped or not)
 
     fp = gzopen(c.infile.string().c_str(), "rb");
     seq = kseq_init(fp);
     
-    //quickly scan FASTQ/FASTQ
+    //quickly scan FASTQ
 
     while (kseq_read(seq) >= 0){
       

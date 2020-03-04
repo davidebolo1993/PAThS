@@ -1,0 +1,2 @@
+/Users/davidebolognini/PAThS/test/test.1.fq.gz
+/Users/davidebolognini/PAThS/test/test.2.fq.gz
