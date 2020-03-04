@@ -8,12 +8,12 @@ SDSL_ROOT ?= ${PWD}/src/sdsl-lite
 # Flags
 CXX=g++
 CXXFLAGS += -std=c++11 -O3 -DNDEBUG -I ${SDSL_ROOT}/include -pedantic -W -Wall
-LDFLAGS += -L${SDSL_ROOT}/lib -lsdsl -ldivsufsort -ldivsufsort64
+LDFLAGS += -L${SDSL_ROOT}/lib -lsdsl -ldivsufsort -ldivsufsort64 -lboost_iostreams -lboost_filesystem -lboost_system -lboost_program_options -lboost_date_time
 
 ifeq (${STATIC}, 1)
-	LDFLAGS += -static -static-libgcc -pthread -lz
+	LDFLAGS += -static -static-libgcc -pthread -lz -llzma -lbz2
 else
-	LDFLAGS += -lz
+	LDFLAGS += -lz -llzma -lbz2
 endif
 
 ifeq (${DEBUG}, 1)
@@ -32,7 +32,7 @@ SOURCES = $(wildcard src/*.h) $(wildcard src/*.cpp)
 PBASE=$(shell pwd)
 
 # Targets
-TARGETS =.sdsl src/fqreader
+TARGETS =.sdsl src/paths
 
 all:  $(TARGETS)
 
@@ -40,7 +40,7 @@ all:  $(TARGETS)
 
 	cd src/sdsl-lite/ && ./install.sh ${PBASE}/src/sdsl-lite && cd ../../ && touch .sdsl
 
-src/fqreader: .sdsl $(SOURCES)
+src/paths: .sdsl $(SOURCES)
 	$(CXX) $(CXXFLAGS) $@.cpp -o $@ $(LDFLAGS)
 
 clean:
