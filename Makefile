@@ -10,6 +10,12 @@ CXX=g++
 CXXFLAGS += -std=c++11 -O3 -DNDEBUG -I ${SDSL_ROOT}/include -pedantic -W -Wall
 LDFLAGS += -L${SDSL_ROOT}/lib -lsdsl -ldivsufsort -ldivsufsort64 -lboost_iostreams -lboost_filesystem -lboost_system -lboost_program_options -lboost_date_time
 
+# Install dir
+prefix = ${PWD}
+exec_prefix = $(prefix)
+bindir ?= $(exec_prefix)/bin
+
+
 ifeq (${STATIC}, 1)
 	LDFLAGS += -static -static-libgcc -pthread -lz -llzma -lbz2
 else
@@ -32,6 +38,7 @@ SOURCES = $(wildcard src/*.h) $(wildcard src/*.cpp)
 PBASE=$(shell pwd)
 
 # Target
+BUILT_PROGRAMS = src/paths
 TARGETS =.sdsl src/paths
 
 all:  $(TARGETS)
@@ -43,5 +50,10 @@ all:  $(TARGETS)
 src/paths: .sdsl $(SOURCES)
 	$(CXX) $(CXXFLAGS) $@.cpp -o $@ $(LDFLAGS)
 
+install: ${BUILT_PROGRAMS}
+	mkdir -p ${bindir}
+	install -p ${BUILT_PROGRAMS} ${bindir}
+
 clean:
 	cd src/sdsl-lite/ && ./uninstall.sh && cd ../../ && rm .sdsl
+
