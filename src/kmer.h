@@ -21,6 +21,15 @@
 #include <sdsl/suffix_arrays.hpp>
 using namespace sdsl;
 
+struct Container {    
+  int kmerlength;
+  int minquality;
+  boost::filesystem::path outfile;
+  boost::filesystem::path infile;
+  boost::filesystem::path dumpfile;
+  boost::filesystem::path infilelist;
+};
+
 char complement(char n)
 {   
     switch(n)
@@ -38,17 +47,21 @@ char complement(char n)
     default:
       throw std::domain_error("Invalid nucleotide.");
     }
-}   
+}
 
+int avgq(std::string const& s) {
 
+  int aq = 0;
+  
+  for (int i = 0; i < s.size(); ++i) {
 
-struct Container {    
-  int kmerlength;
-  boost::filesystem::path outfile;
-  boost::filesystem::path infile;
-  boost::filesystem::path dumpfile;
-  boost::filesystem::path infilelist;
-};
+    aq += (int) s[i]-33;
+  
+  }
+
+  return aq/s.size();
+
+}
 
 
 KSEQ_INIT(gzFile,gzread)
@@ -66,16 +79,17 @@ int kmers(int argc, char **argv)
   boost::program_options::options_description generic("Generic options");
 
   generic.add_options()
-  ("help,h", "show help message")
+  ("help,?", "show help message")
   ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.dumpfile)->default_value("kmers.txt"), "output unique k-mers list")
   ("output,o", boost::program_options::value<boost::filesystem::path>(&c.outfile)->default_value("kmers.fm"), "output unique k-mers FM index")
-  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ/FASTA files list")
+  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ list")
   ("kmer,k", boost::program_options::value<int>(&c.kmerlength)->default_value(27), "k-mers length")
+  ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers")
   ;
 
   boost::program_options::options_description hidden("Hidden options");
   hidden.add_options()
-  ("input,i", boost::program_options::value<boost::filesystem::path>(&c.infile), "input FASTQ/FASTA file")
+  ("input,i", boost::program_options::value<boost::filesystem::path>(&c.infile), "input FASTQ file")
   ;
 
   boost::program_options::positional_options_description pos_args;
@@ -91,7 +105,7 @@ int kmers(int argc, char **argv)
   if (vm.count("help")) {
 
     std::cout << std::endl;
-    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq.gz/input.fa.gz>" << std::endl;
+    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq/input.fq.gz>" << std::endl;
     std::cout << visible_options << "\n";
     return 0;
   
@@ -103,7 +117,7 @@ int kmers(int argc, char **argv)
     
     std::cout << std::endl;
     std::cout << "Missing input file/s" << std::endl;
-    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq.gz/input.fa.gz>" << std::endl;
+    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq/input.fq.gz>" << std::endl;
     std::cout << visible_options << "\n";
     return 0;
   }
@@ -135,14 +149,23 @@ int kmers(int argc, char **argv)
 
           ++n; //count processed sequences
           std::string s = seq->seq.s;
-          std::transform(s.begin(), s.end(), s.begin(), ::toupper);
+          std::string q = seq->qual.s;
 
-          //do something with qualities? Not implemented yet.
-          //std::string q = seq->qual.s;
+          std::transform(s.begin(), s.end(), s.begin(), ::toupper);
 
           for (int i = 0; i <= s.length() - c.kmerlength; i++) {
 
             std::string forw = s.substr(i, c.kmerlength);
+            std::string qual = q.substr(i, c.kmerlength);
+
+            int avgqual = avgq(qual);
+
+            if (avgqual < c.minquality) {
+
+              continue;
+
+            }
+
             set.insert(forw);
             std::reverse(forw.begin(),forw.end());
             std::transform(forw.begin(), forw.end(), forw.begin(), complement);
@@ -173,14 +196,23 @@ int kmers(int argc, char **argv)
       
       ++n; //count processed sequences
       std::string s = seq->seq.s;
+      std::string q = seq->qual.s;
+
       std::transform(s.begin(), s.end(), s.begin(), ::toupper);
       
-      //do something with qualities? Not implemented yet.
-      //std::string q = seq->qual.s;
-
       for (int i = 0; i <= s.length() - c.kmerlength; i++) {
 
         std::string forw = s.substr(i, c.kmerlength);
+        std::string qual = q.substr(i, c.kmerlength);
+
+        int avgqual = avgq(qual);
+
+        if (avgqual < c.minquality) {
+
+          continue;
+
+        }
+
         set.insert(forw);
         std::reverse(forw.begin(),forw.end());
         std::transform(forw.begin(), forw.end(), forw.begin(), complement);

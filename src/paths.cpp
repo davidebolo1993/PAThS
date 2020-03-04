@@ -10,7 +10,7 @@ inline void displayUsage() {
   std::cout << std::endl;
   std::cout << "Commands:" << std::endl;
   std::cout << std::endl;
-  std::cout << "    kmers       generate a FM-index for k-mers in FASTQ/FASTA" << std::endl;
+  std::cout << "    kmers       generate a FM-index for k-mers in FASTQ" << std::endl;
   std::cout << std::endl;
   std::cout << std::endl;
 }
@@ -33,7 +33,7 @@ inline void asciiArt() {
 
 int main(int argc, char **argv) {
   
-  std::string pathsversion = "0.1dirty";
+  std::string pathsversion = "0.1 (dirty)";
   if (argc < 2) { 
     asciiArt();
     displayUsage();
