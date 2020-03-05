@@ -80,9 +80,9 @@ int kmers(int argc, char **argv)
   ("help,?", "show help message")
   ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.dumpfile)->default_value("kmers.txt"), "output unique k-mers list")
   ("output,o", boost::program_options::value<boost::filesystem::path>(&c.outfile)->default_value("kmers.fm"), "output unique k-mers FM index")
-  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ list")
+  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ/FASTA list")
   ("kmer,k", boost::program_options::value<int>(&c.kmerlength)->default_value(61), "k-mers length")
-  ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers")
+  ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers in FASTQ")
   ;
 
   boost::program_options::options_description hidden("Hidden options");
@@ -103,7 +103,7 @@ int kmers(int argc, char **argv)
   if (vm.count("help")) {
 
     std::cout << std::endl;
-    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq/input.fq.gz>" << std::endl;
+    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq/input.fa>" << std::endl;
     std::cout << visible_options << "\n";
     return 0;
   
@@ -115,7 +115,7 @@ int kmers(int argc, char **argv)
     
     std::cout << std::endl;
     std::cout << "Missing input file/s" << std::endl;
-    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq/input.fq.gz>" << std::endl;
+    std::cout << "Usage: paths " << argv[0] << " [OPTIONS] <input.fq/input.fa>" << std::endl;
     std::cout << visible_options << "\n";
     return 0;
   }
@@ -127,6 +127,8 @@ int kmers(int argc, char **argv)
   kseq_t *seq;
   gzFile fp;
   int n = 0;
+  int klen,avgqual;
+  std::string s,q,forw,qual;
 
   if (vm.count("list")) {
 
@@ -146,21 +148,37 @@ int kmers(int argc, char **argv)
         while (kseq_read(seq) >= 0){
 
           ++n; //count processed sequences
-          std::string s = seq->seq.s;
-          std::string q = seq->qual.s;
-
+          s = seq->seq.s; //extract sequence
           std::transform(s.begin(), s.end(), s.begin(), ::toupper);
 
-          for (int i = 0; i <= s.length() - c.kmerlength; i++) {
+          if (seq->is_fastq) q = seq->qual.s; //extract quality (if FASTQ)
+          
+          if (s.length() < c.kmerlength) { //FASTA can have different sequences length
 
-            std::string forw = s.substr(i, c.kmerlength);
-            std::string qual = q.substr(i, c.kmerlength);
+            klen = s.length();
 
-            int avgqual = avgq(qual);
+          }
 
-            if (avgqual < c.minquality) {
+          else {
 
-              continue;
+            klen = c.kmerlength; 
+
+          }
+
+          for (int i = 0; i <= s.length() - klen; i++) {
+
+            forw = s.substr(i,klen);
+            
+            if (seq->is_fastq) {
+
+              qual = q.substr(i,klen);
+              avgqual = avgq(qual);
+              
+              if (avgqual < c.minquality) {
+
+                continue;
+
+              }
 
             }
 
@@ -188,26 +206,42 @@ int kmers(int argc, char **argv)
     fp = gzopen(c.infile.string().c_str(), "rb");
     seq = kseq_init(fp);
     
-    //quickly scan FASTQ
+    //quickly scan FASTQ/FASTA
 
     while (kseq_read(seq) >= 0){
       
       ++n; //count processed sequences
-      std::string s = seq->seq.s;
-      std::string q = seq->qual.s;
-
+      s = seq->seq.s;
       std::transform(s.begin(), s.end(), s.begin(), ::toupper);
-      
-      for (int i = 0; i <= s.length() - c.kmerlength; i++) {
 
-        std::string forw = s.substr(i, c.kmerlength);
-        std::string qual = q.substr(i, c.kmerlength);
+      if (seq->is_fastq) q = seq->qual.s; //extract quality (if FASTQ)
 
-        int avgqual = avgq(qual);
+      if (s.length() < c.kmerlength) { //FASTA can have different sequences length
 
-        if (avgqual < c.minquality) {
+        klen = s.length();
 
-          continue;
+      }
+
+      else {
+
+        klen = c.kmerlength; 
+
+      }
+
+      for (int i = 0; i <= s.length() - klen; i++) {
+
+        forw = s.substr(i, klen);
+        
+        if (seq->is_fastq) {
+
+          qual = q.substr(i,klen);
+          avgqual = avgq(qual);
+
+          if (avgqual < c.minquality) {
+
+            continue;
+
+          }
 
         }
 
@@ -227,7 +261,7 @@ int kmers(int argc, char **argv)
 
   std::cout << "Processed " << n << " sequences" << std::endl;
 
-  // output compressed list of unique k-mers
+  // output uncompressed list of unique k-mers
 
   std::ofstream kmdump;
   kmdump.open(c.dumpfile.string().c_str());
@@ -246,7 +280,7 @@ int kmers(int argc, char **argv)
 
   std::cout << "Found " << n << " unique k-mers" << std::endl;
 
-  // construct FM index
+  // construct FM index from file
 
   std::cout << "Constructing FM index of unique k-mers from file" << std::endl;
 

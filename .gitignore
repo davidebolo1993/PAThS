@@ -1,3 +1,4 @@
 .sdsl
 src/paths
 bin/paths
+test/list.txt
