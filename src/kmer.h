@@ -12,6 +12,15 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem.hpp>
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/unordered_map.hpp>
+#include <boost/iostreams/device/file.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <cassert>
 
 #include "stdc++.h" 
 #include "kseq.h"
@@ -22,11 +31,10 @@ using namespace sdsl;
 struct Container {    
   int kmerlength;
   int minquality;
-  boost::filesystem::path outfile;
   boost::filesystem::path infile;
-  boost::filesystem::path dumpfile;
-  boost::filesystem::path mapfile;
   boost::filesystem::path infilelist;
+  boost::filesystem::path jsonfile;
+  boost::filesystem::path mapfile;
 };
 
 char complement(char n)
@@ -89,9 +97,8 @@ int kmers(int argc, char **argv)
 
   boost::program_options::options_description output("Output options");
   output.add_options()
-  ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.dumpfile)->default_value("kmers.txt"), "output unique k-mers list")
-  ("output,o", boost::program_options::value<boost::filesystem::path>(&c.outfile)->default_value("kmers.fm9"), "output unique k-mers FM index")
-  ("map,m", boost::program_options::value<boost::filesystem::path>(&c.mapfile)->default_value("kmers.json"), "output k-mers spectra")
+  ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.jsonfile)->default_value("kmers.json"), "output k-mers spectra")
+  ("map,m", boost::program_options::value<boost::filesystem::path>(&c.mapfile)->default_value("kmers.map"), "output binary k-mers hash map")
   ;
 
   boost::program_options::options_description hidden("Hidden options");
@@ -132,7 +139,7 @@ int kmers(int argc, char **argv)
   // Generate FM index of k-mers from FASTQ
 
   csa_wt<> fmi;
-  std::unordered_map<std::string,int> hashmap;
+  std::unordered_map<std::string,int> hashmap,hashmapin;
   kseq_t *seq;
   gzFile fp;
   int n = 0;
@@ -270,37 +277,65 @@ int kmers(int argc, char **argv)
 
   std::cout << "Processed " << n << " sequences" << std::endl;
 
-  // output uncompressed list of unique k-mers
 
-  std::ofstream kmdump,kmmap;
-
-  kmdump.open(c.dumpfile.string().c_str());
-  kmmap.open(c.mapfile.string().c_str());
-
-  kmmap << "{" << std::endl;
-  std::string delim = "";
+  //kmmap << "{" << std::endl;
+  //std::string delim = "";
   
   for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
 
-    kmdump << (*it).first << std::endl;
-    kmmap << delim << "\"" << (*it).first << "\": " << (*it).second;
-    delim = ",\n";
+
+    std::cout << (*it).first << std::endl;
+    //kmdump << (*it).first << std::endl;
+    //kmmap << delim << "\"" << (*it).first << "\": " << (*it).second;
+    //delim = ",\n";
+    continue;
 
   }
 
-  kmmap << std::endl << "}" << std::endl;
+  //kmmap << std::endl << "}" << std::endl;
 
-  kmdump.close();
-  kmmap.close();
+  //kmdump.close();
+  //kmmap.close();
+
+  {
+
+  std::ofstream ofs;
+  ofs.exceptions(ofs.badbit | ofs.failbit);
+  ofs.open(c.mapfile.string().c_str(),std::ios::binary);
+  boost::iostreams::filtering_ostream fo;
+  fo.push(boost::iostreams::zlib_compressor());
+  fo.push(ofs);
+  boost::archive::binary_oarchive oa(fo);
+  oa << hashmap;
+  ofs.close();
+
+  }
+
+
+  //std::cout << "here" << std::endl;
+
+  {
+  std::ifstream ifs;
+  ifs.exceptions(ifs.badbit | ifs.failbit | ifs.eofbit);
+  ifs.open(c.mapfile.string().c_str(),std::ios::binary);
+  boost::iostreams::filtering_istream fi;
+  fi.push(boost::iostreams::zlib_decompressor());
+  fi.push(ifs);
+  boost::archive::binary_iarchive ia(fi);
+  ia >> hashmapin;
+  ifs.close();
+
+  }
+  
 
   std::cout << "Found " << hashmap.size() << " unique k-mers" << std::endl;
 
   // construct FM index from file
 
-  std::cout << "Constructing FM index of unique k-mers from file" << std::endl;
+  //std::cout << "Constructing FM index of unique k-mers from file" << std::endl;
 
-  construct(fmi,c.dumpfile.string().c_str(), 1);
-  store_to_file(fmi,c.outfile.string().c_str());
+  //construct(fmi,c.dumpfile.string().c_str(), 1);
+  //store_to_file(fmi,c.outfile.string().c_str());
 
   std::cout << "Done" << std::endl;
 
