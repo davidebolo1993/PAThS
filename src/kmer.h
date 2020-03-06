@@ -25,6 +25,7 @@ struct Container {
   boost::filesystem::path outfile;
   boost::filesystem::path infile;
   boost::filesystem::path dumpfile;
+  boost::filesystem::path mapfile;
   boost::filesystem::path infilelist;
 };
 
@@ -74,15 +75,23 @@ int kmers(int argc, char **argv)
 
   // Parse command line
 
-  boost::program_options::options_description generic("Generic options");
-
+  boost::program_options::options_description generic("K-mer options");
   generic.add_options()
   ("help,?", "show help message")
-  ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.dumpfile)->default_value("kmers.txt"), "output unique k-mers list")
-  ("output,o", boost::program_options::value<boost::filesystem::path>(&c.outfile)->default_value("kmers.fm"), "output unique k-mers FM index")
-  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ/FASTA list")
   ("kmer,k", boost::program_options::value<int>(&c.kmerlength)->default_value(61), "k-mers length")
   ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers in FASTQ")
+  ;
+
+  boost::program_options::options_description input("Input options");
+  input.add_options()
+  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple input FASTQ/FASTA list")
+  ;
+
+  boost::program_options::options_description output("Output options");
+  output.add_options()
+  ("dump,u", boost::program_options::value<boost::filesystem::path>(&c.dumpfile)->default_value("kmers.txt"), "output unique k-mers list")
+  ("output,o", boost::program_options::value<boost::filesystem::path>(&c.outfile)->default_value("kmers.fm9"), "output unique k-mers FM index")
+  ("map,m", boost::program_options::value<boost::filesystem::path>(&c.mapfile)->default_value("kmers.json"), "output k-mers spectra")
   ;
 
   boost::program_options::options_description hidden("Hidden options");
@@ -93,9 +102,9 @@ int kmers(int argc, char **argv)
   boost::program_options::positional_options_description pos_args;
   pos_args.add("input", -1);
   boost::program_options::options_description cmdline_options;
-  cmdline_options.add(generic).add(hidden);
+  cmdline_options.add(generic).add(input).add(output).add(hidden);
   boost::program_options::options_description visible_options;
-  visible_options.add(generic);
+  visible_options.add(generic).add(input).add(output);
   boost::program_options::variables_map vm;
   boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(cmdline_options).positional(pos_args).run(), vm);
   boost::program_options::notify(vm);
@@ -123,7 +132,7 @@ int kmers(int argc, char **argv)
   // Generate FM index of k-mers from FASTQ
 
   csa_wt<> fmi;
-  std::unordered_set<std::string> set;
+  std::unordered_map<std::string,int> hashmap;
   kseq_t *seq;
   gzFile fp;
   int n = 0;
@@ -182,10 +191,10 @@ int kmers(int argc, char **argv)
 
             }
 
-            set.insert(forw);
+            hashmap[forw] ++;
             std::reverse(forw.begin(),forw.end());
             std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-            set.insert(forw);
+            hashmap[forw] ++;
 
           }
 
@@ -245,10 +254,10 @@ int kmers(int argc, char **argv)
 
         }
 
-        set.insert(forw);
+        hashmap[forw] ++;
         std::reverse(forw.begin(),forw.end());
         std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-        set.insert(forw);
+        hashmap[forw] ++;
       
       }
 
@@ -263,22 +272,28 @@ int kmers(int argc, char **argv)
 
   // output uncompressed list of unique k-mers
 
-  std::ofstream kmdump;
-  kmdump.open(c.dumpfile.string().c_str());
-  n=0;
+  std::ofstream kmdump,kmmap;
 
-  for (auto s : set)
+  kmdump.open(c.dumpfile.string().c_str());
+  kmmap.open(c.mapfile.string().c_str());
+
+  kmmap << "{" << std::endl;
+  std::string delim = "";
   
-  {
-    
-    kmdump << s << std::endl;
-    n++;
-  
+  for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
+
+    kmdump << (*it).first << std::endl;
+    kmmap << delim << "\"" << (*it).first << "\": " << (*it).second;
+    delim = ",\n";
+
   }
 
-  kmdump.close();
+  kmmap << std::endl << "}" << std::endl;
 
-  std::cout << "Found " << n << " unique k-mers" << std::endl;
+  kmdump.close();
+  kmmap.close();
+
+  std::cout << "Found " << hashmap.size() << " unique k-mers" << std::endl;
 
   // construct FM index from file
 
