@@ -9,8 +9,13 @@ if (length(args)==0) {
   args[2] = "kmers.pdf"
 }
 
-library(ggplot2)
-library(rjson)
+if (!requireNamespace("ggplot2", quietly = TRUE))
+  install.packages("ggplot2",repos='http://cran.us.r-project.org')
+if (!requireNamespace("rjson", quietly = TRUE))
+  install.packages("rjson",repos='http://cran.us.r-project.org')
+
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(rjson))
 
 jsonfile<-fromJSON(file = args[1])
 kmerlen<-as.character(nchar(names(jsonfile)[1]))
