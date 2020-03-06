@@ -41,7 +41,7 @@ TARGETS =src/paths
 
 all:  $(TARGETS)
 
-src/paths: .sdsl $(SOURCES)
+src/paths: $(SOURCES)
 	$(CXX) $(CXXFLAGS) $@.cpp -o $@ $(LDFLAGS)
 
 install: ${BUILT_PROGRAMS}
