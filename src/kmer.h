@@ -134,6 +134,7 @@ int kmers(int argc, char **argv)
 
   std::unordered_map<std::string,int> hashmap;
   std::unordered_map<std::string,int> hashmaptest; //this is just for testing and will be removed once stable
+  std::unordered_map<int,int> khash; //this stores kmerspectra
   kseq_t *seq;
   gzFile fp;
   int n = 0;
@@ -272,6 +273,13 @@ int kmers(int argc, char **argv)
   std::cout << "Processed " << n << " sequences" << std::endl;
   std::cout << "Found " << hashmap.size() << " unique k-mers" << std::endl;
 
+
+  for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
+
+    khash[(*it).second] ++;
+
+  }
+
   std::ofstream kmjson;
   kmjson.open(c.jsonfile.string().c_str(),std::ios::binary);
   kmjson << "{" << std::endl;
@@ -279,7 +287,7 @@ int kmers(int argc, char **argv)
   
   //store values count instead of keys count. TODO
 
-  for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
+  for (auto it = khash.cbegin(); it != khash.cend(); ++it) {
 
     kmjson << delim << "\"" << (*it).first << "\": " << (*it).second;
     delim = ",\n";
