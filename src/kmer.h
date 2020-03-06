@@ -135,7 +135,7 @@ int kmers(int argc, char **argv)
   // Generate FM index of k-mers from FASTQ
 
   std::unordered_map<std::string,int> hashmap;
-  std::unordered_map<std::string,int> hashmaptest; //just for testing
+  std::unordered_map<std::string,int> hashmaptest; //this is just for testing and will be removed once stable
   kseq_t *seq;
   gzFile fp;
   int n = 0;
@@ -279,20 +279,21 @@ int kmers(int argc, char **argv)
   kmjson << "{" << std::endl;
   std::string delim = "";
   
+
+  //store values count instead of keys count. TODO
+
   for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
 
     kmjson << delim << "\"" << (*it).first << "\": " << (*it).second;
     delim = ",\n";
-    continue;
 
   }
 
   kmjson << std::endl << "}" << std::endl;
-
   kmjson.close();
 
 
-  // store binary compressed k-mers map
+  //store binary compressed k-mers map
   
   {
   std::ofstream ofs;
@@ -304,22 +305,28 @@ int kmers(int argc, char **argv)
   boost::archive::binary_oarchive oa(fo);
   oa << hashmap;
   }
-
-  
-  //Re-check: this is just for testing purposes and will be removed once stable
+   
+  //following lines are just for testing and will be removed once stable
 
   {
-    std::ifstream ifs;
-    ifs.exceptions(ifs.badbit | ifs.failbit | ifs.eofbit);
-    ifs.open(c.mapfile.string().c_str(),std::ios::in | std::ios::binary);
-    boost::iostreams::filtering_istream fi;
-    fi.push(boost::iostreams::zlib_decompressor());
-    fi.push(ifs);
-    boost::archive::binary_iarchive ia(fi);
-    ia >> hashmaptest;
+  std::ifstream ifs;
+  ifs.exceptions(ifs.badbit | ifs.failbit | ifs.eofbit);
+  ifs.open(c.mapfile.string().c_str(),std::ios::in | std::ios::binary);
+  boost::iostreams::filtering_istream fi;
+  fi.push(boost::iostreams::zlib_decompressor());
+  fi.push(ifs);
+  boost::archive::binary_iarchive ia(fi);
+  ia >> hashmaptest;
   }
   
   std::cout << "Done" << std::endl;
+
+
+  for (auto it = hashmaptest.cbegin(); it != hashmaptest.cend(); ++it) {
+
+    std::cout << (*it).first << ": " << (*it).second << std::endl;
+  
+  }
 
   return 0;
 
