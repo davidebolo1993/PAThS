@@ -132,8 +132,6 @@ int kmers(int argc, char **argv)
     return 0;
   }
 
-  // Generate FM index of k-mers from FASTQ
-
   std::unordered_map<std::string,int> hashmap;
   std::unordered_map<std::string,int> hashmaptest; //this is just for testing and will be removed once stable
   kseq_t *seq;
@@ -279,7 +277,6 @@ int kmers(int argc, char **argv)
   kmjson << "{" << std::endl;
   std::string delim = "";
   
-
   //store values count instead of keys count. TODO
 
   for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
