@@ -83,12 +83,12 @@ int kmers(int argc, char **argv)
   generic.add_options()
   ("help,?", "show help message")
   ("kmer,k", boost::program_options::value<int>(&c.kmerlength)->default_value(61), "k-mers length")
-  ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers in FASTQ")
+  ("quality,q", boost::program_options::value<int>(&c.minquality)->default_value(30), "minimum average qscore to retain k-mers (only works for FASTQ)")
   ;
 
   boost::program_options::options_description input("Input options");
   input.add_options()
-  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple FASTQ/FASTA input (one per line)")
+  ("list,l", boost::program_options::value<boost::filesystem::path>(&c.infilelist), "multiple FASTQ/FASTA (one per line)")
   ;
 
   boost::program_options::options_description output("Output options");
