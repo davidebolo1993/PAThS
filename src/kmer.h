@@ -9,6 +9,7 @@
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
 #include <boost/program_options/variables_map.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem.hpp>
@@ -20,7 +21,6 @@
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
-
 #include "stdc++.h" 
 #include "kseq.h"
 
@@ -93,7 +93,7 @@ int kmers(int argc, char **argv)
 
   boost::program_options::options_description output("Output options");
   output.add_options()
-  ("json,j", boost::program_options::value<boost::filesystem::path>(&c.jsonfile)->default_value("kmers.json"), "output k-mers spectra in JSON")
+  ("json,j", boost::program_options::value<boost::filesystem::path>(&c.jsonfile)->default_value("kmers.json.gz"), "output k-mers spectra in JSON")
   ("map,m", boost::program_options::value<boost::filesystem::path>(&c.mapfile)->default_value("kmers.map"), "output compressed binary k-mers hash map")
   ;
 
@@ -133,13 +133,14 @@ int kmers(int argc, char **argv)
   }
 
   std::unordered_map<std::string,int> hashmap;
-  std::unordered_map<std::string,int> hashmaptest; //this is just for testing and will be removed once stable
+  //std::unordered_map<std::string,int> hashmaptest; //this is just for testing and will be removed once stable
   std::unordered_map<int,int> khash; //this stores kmerspectra
   kseq_t *seq;
   gzFile fp;
   int n = 0;
   int klen,avgqual;
   std::string s,q,forw,qual;
+  boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
 
   if (vm.count("list")) {
 
@@ -154,6 +155,8 @@ int kmers(int argc, char **argv)
       while (std::getline(inlist,line)) {
 
         fp = gzopen(line.c_str(), "rb");
+        now = boost::posix_time::second_clock::local_time();
+        std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Processing \"" <<  line.c_str() << "\"" << std::endl;
         seq = kseq_init(fp);
 
         while (kseq_read(seq) >= 0){
@@ -215,6 +218,8 @@ int kmers(int argc, char **argv)
     //open single input file (can be gzipped or not)
 
     fp = gzopen(c.infile.string().c_str(), "rb");
+    now = boost::posix_time::second_clock::local_time();
+    std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Processing \"" <<  c.infile.string().c_str() << "\"" << std::endl;
     seq = kseq_init(fp);
     
     //quickly scan FASTQ/FASTA
@@ -270,9 +275,10 @@ int kmers(int argc, char **argv)
 
   }
 
-  std::cout << "Processed " << n << " sequences" << std::endl;
-  std::cout << "Found " << hashmap.size() << " unique k-mers" << std::endl;
-
+  now = boost::posix_time::second_clock::local_time();
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;  
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Found " << hashmap.size() << " unique k-mers in " << n << " sequences" << std::endl;
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing k-mers spectra \"" << c.jsonfile.string().c_str() << "\"" << std::endl;
 
   for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
 
@@ -280,13 +286,13 @@ int kmers(int argc, char **argv)
 
   }
 
-  std::ofstream kmjson;
-  kmjson.open(c.jsonfile.string().c_str(),std::ios::binary);
+  boost::iostreams::filtering_ostream kmjson;
+  kmjson.push(boost::iostreams::gzip_compressor());
+  kmjson.push(boost::iostreams::file_sink(c.jsonfile.string().c_str(), std::ios_base::out | std::ios_base::binary));
+  
   kmjson << "{" << std::endl;
   std::string delim = "";
   
-  //store values count instead of keys count. TODO
-
   for (auto it = khash.cbegin(); it != khash.cend(); ++it) {
 
     kmjson << delim << "\"" << (*it).first << "\": " << (*it).second;
@@ -295,8 +301,11 @@ int kmers(int argc, char **argv)
   }
 
   kmjson << std::endl << "}" << std::endl;
-  kmjson.close();
+  kmjson.pop();
 
+  now = boost::posix_time::second_clock::local_time();
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing compressed binary k-mers hash map \"" << c.mapfile.string().c_str() << "\"" << std::endl;
 
   //store binary compressed k-mers map
   
@@ -310,28 +319,27 @@ int kmers(int argc, char **argv)
   boost::archive::binary_oarchive oa(fo);
   oa << hashmap;
   }
-   
-  //following lines are just for testing and will be removed once stable
-
-  {
-  std::ifstream ifs;
-  ifs.exceptions(ifs.badbit | ifs.failbit | ifs.eofbit);
-  ifs.open(c.mapfile.string().c_str(),std::ios::in | std::ios::binary);
-  boost::iostreams::filtering_istream fi;
-  fi.push(boost::iostreams::zlib_decompressor());
-  fi.push(ifs);
-  boost::archive::binary_iarchive ia(fi);
-  ia >> hashmaptest;
-  }
   
-  std::cout << "Done" << std::endl;
-
-
-  for (auto it = hashmaptest.cbegin(); it != hashmaptest.cend(); ++it) {
-
-    std::cout << (*it).first << ": " << (*it).second << std::endl;
+  now = boost::posix_time::second_clock::local_time();
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;
   
-  }
+  //following lines are just for testing and will be removed once stable. Test if hash table can be read again.
+  //{
+  //std::ifstream ifs;
+  //ifs.exceptions(ifs.badbit | ifs.failbit | ifs.eofbit);
+  //ifs.open(c.mapfile.string().c_str(),std::ios::in | std::ios::binary);
+  //boost::iostreams::filtering_istream fi;
+  //fi.push(boost::iostreams::zlib_decompressor());
+  //fi.push(ifs);
+  //boost::archive::binary_iarchive ia(fi);
+  //ia >> hashmaptest;
+  //}
+  
+  //for (auto it = hashmaptest.cbegin(); it != hashmaptest.cend(); ++it) {
+
+    //std::cout << (*it).first << ": " << (*it).second << std::endl;
+  
+  //}
 
   return 0;
 
