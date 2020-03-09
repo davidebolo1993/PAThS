@@ -13,16 +13,15 @@
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/filesystem.hpp>
-#include <boost/serialization/serialization.hpp>
-#include <boost/serialization/unordered_map.hpp>
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/zlib.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
-#include <boost/archive/binary_oarchive.hpp>
-#include <boost/archive/binary_iarchive.hpp>
 #include "stdc++.h" 
 #include "kseq.h"
+#include "sparsepp/sparsepp/spp.h"
+
+using spp::sparse_hash_map;
+
 
 struct Container {    
   int kmerlength;
@@ -30,7 +29,64 @@ struct Container {
   boost::filesystem::path infile;
   boost::filesystem::path infilelist;
   boost::filesystem::path jsonfile;
-  boost::filesystem::path mapfile;
+  boost::filesystem::path mapfilex;
+  boost::filesystem::path mapfiley;
+};
+
+class FileSerializer 
+{
+public:
+    // serialize basic types to FILE
+    // -----------------------------
+    template <class T>
+    bool operator()(FILE *fp, const T& value) 
+    {
+        return fwrite((const void *)&value, sizeof(value), 1, fp) == 1;
+    }
+
+    template <class T>
+    bool operator()(FILE *fp, T* value) 
+    {
+        return fread((void *)value, sizeof(*value), 1, fp) == 1;
+    }
+
+    // serialize std::string to FILE
+    // -----------------------------
+    bool operator()(FILE *fp, const std::string& value) 
+    {
+        const size_t size = value.size();
+        return (*this)(fp, size) && fwrite(value.c_str(), size, 1, fp) == 1;
+    }
+
+    bool operator()(FILE *fp, std::string* value) 
+    {
+        size_t size;
+        if (!(*this)(fp, &size)) 
+            return false;
+        char* buf = new char[size];
+        if (fread(buf, size, 1, fp) != 1) 
+        {
+            delete [] buf;
+            return false;
+        }
+        new (value) std::string(buf, (size_t)size);
+        delete[] buf;
+        return true;
+    }
+
+    // serialize std::pair<const A, B> to FILE - needed for maps
+    // ---------------------------------------------------------
+    template <class A, class B>
+    bool operator()(FILE *fp, const std::pair<const A, B>& value)
+    {
+        return (*this)(fp, value.first) && (*this)(fp, value.second);
+    }
+
+    template <class A, class B>
+    bool operator()(FILE *fp, std::pair<const A, B> *value) 
+    {
+        return (*this)(fp, (A *)&value->first) && (*this)(fp, &value->second);
+    }
 };
 
 char complement(char n)
@@ -66,13 +122,10 @@ int avgq(std::string const& s) {
 
 }
 
-
 KSEQ_INIT(gzFile,gzread)
-
 
 int kmers(int argc, char **argv)
 {
-
   // Declare container
 
   Container c;
@@ -94,7 +147,9 @@ int kmers(int argc, char **argv)
   boost::program_options::options_description output("Output options");
   output.add_options()
   ("json,j", boost::program_options::value<boost::filesystem::path>(&c.jsonfile)->default_value("kmers.json.gz"), "output k-mers spectra in JSON")
-  ("map,m", boost::program_options::value<boost::filesystem::path>(&c.mapfile)->default_value("kmers.map"), "output compressed binary k-mers hash map")
+  ("mapx,x", boost::program_options::value<boost::filesystem::path>(&c.mapfilex)->default_value("kmers.map.x"), "output compressed binary forward k-mers hash map")
+  ("mapy,y", boost::program_options::value<boost::filesystem::path>(&c.mapfiley)->default_value("kmers.map.y"), "output compressed binary reverse complement k-mers hash map")
+
   ;
 
   boost::program_options::options_description hidden("Hidden options");
@@ -132,8 +187,8 @@ int kmers(int argc, char **argv)
     return 0;
   }
 
-  std::unordered_map<std::string,int> hashmap;
-  //std::unordered_map<std::string,int> hashmaptest; //this is just for testing and will be removed once stable
+  sparse_hash_map<std::string, int> hashmapx;
+  sparse_hash_map<std::string, int> hashmapy;
   std::unordered_map<int,int> khash; //this stores kmerspectra
   kseq_t *seq;
   gzFile fp;
@@ -196,10 +251,10 @@ int kmers(int argc, char **argv)
 
             }
 
-            hashmap[forw] ++;
+            hashmapx[forw] ++;
             std::reverse(forw.begin(),forw.end());
             std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-            hashmap[forw] ++;
+            hashmapy[forw] ++;
 
           }
 
@@ -261,10 +316,10 @@ int kmers(int argc, char **argv)
 
         }
 
-        hashmap[forw] ++;
+        hashmapx[forw] ++;
         std::reverse(forw.begin(),forw.end());
         std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-        hashmap[forw] ++;
+        hashmapy[forw] ++;
       
       }
 
@@ -277,10 +332,16 @@ int kmers(int argc, char **argv)
 
   now = boost::posix_time::second_clock::local_time();
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;  
-  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Found " << hashmap.size() << " unique k-mers in " << n << " sequences" << std::endl;
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Found " << hashmapx.size() + hashmapy.size()<< " unique k-mers in " << n << " sequences" << std::endl;
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing k-mers spectra \"" << c.jsonfile.string().c_str() << "\"" << std::endl;
 
-  for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
+  for (auto it = hashmapx.cbegin(); it != hashmapx.cend(); ++it) {
+
+    khash[(*it).second] ++;
+
+  }
+
+  for (auto it = hashmapy.cbegin(); it != hashmapy.cend(); ++it) {
 
     khash[(*it).second] ++;
 
@@ -289,7 +350,6 @@ int kmers(int argc, char **argv)
   boost::iostreams::filtering_ostream kmjson;
   kmjson.push(boost::iostreams::gzip_compressor());
   kmjson.push(boost::iostreams::file_sink(c.jsonfile.string().c_str(), std::ios_base::out | std::ios_base::binary));
-  
   kmjson << "{" << std::endl;
   std::string delim = "";
   
@@ -305,42 +365,19 @@ int kmers(int argc, char **argv)
 
   now = boost::posix_time::second_clock::local_time();
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;
-  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing compressed binary k-mers hash map \"" << c.mapfile.string().c_str() << "\"" << std::endl;
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing compressed binary k-mers hash maps \"" << c.mapfilex.string().c_str() << "\" and \"" <<  c.mapfiley.string().c_str() << "\"" << std::endl;
 
-  //store binary compressed k-mers map
-  
-  {
-  std::ofstream ofs;
-  ofs.exceptions(ofs.badbit | ofs.failbit);
-  ofs.open(c.mapfile.string().c_str(), std::ios::out | std::ios::binary);
-  boost::iostreams::filtering_ostream fo;
-  fo.push(boost::iostreams::zlib_compressor());
-  fo.push(ofs);
-  boost::archive::binary_oarchive oa(fo);
-  oa << hashmap;
-  }
-  
+  FILE *out1 = fopen(c.mapfilex.string().c_str(), "wb");
+  hashmapx.serialize(FileSerializer(), out1);
+  fclose(out1);
+
+  FILE *out2 = fopen(c.mapfiley.string().c_str(), "wb");
+  hashmapx.serialize(FileSerializer(), out2);
+  fclose(out2);
+
   now = boost::posix_time::second_clock::local_time();
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;
   
-  //following lines are just for testing and will be removed once stable. Test if hash table can be read again.
-  //{
-  //std::ifstream ifs;
-  //ifs.exceptions(ifs.badbit | ifs.failbit | ifs.eofbit);
-  //ifs.open(c.mapfile.string().c_str(),std::ios::in | std::ios::binary);
-  //boost::iostreams::filtering_istream fi;
-  //fi.push(boost::iostreams::zlib_decompressor());
-  //fi.push(ifs);
-  //boost::archive::binary_iarchive ia(fi);
-  //ia >> hashmaptest;
-  //}
-  
-  //for (auto it = hashmaptest.cbegin(); it != hashmaptest.cend(); ++it) {
-
-    //std::cout << (*it).first << ": " << (*it).second << std::endl;
-  
-  //}
-
   return 0;
 
 }
