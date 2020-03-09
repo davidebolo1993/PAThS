@@ -5,6 +5,7 @@
 #include <string>
 #include <fstream>
 #include <zlib.h>
+#include <thread>
 #include <boost/program_options/cmdline.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/parsers.hpp>
@@ -22,15 +23,13 @@
 
 using spp::sparse_hash_map;
 
-
 struct Container {    
   int kmerlength;
   int minquality;
   boost::filesystem::path infile;
   boost::filesystem::path infilelist;
   boost::filesystem::path jsonfile;
-  boost::filesystem::path mapfilex;
-  boost::filesystem::path mapfiley;
+  boost::filesystem::path mapfile;
 };
 
 class FileSerializer 
@@ -122,6 +121,7 @@ int avgq(std::string const& s) {
 
 }
 
+
 KSEQ_INIT(gzFile,gzread)
 
 int kmers(int argc, char **argv)
@@ -147,9 +147,7 @@ int kmers(int argc, char **argv)
   boost::program_options::options_description output("Output options");
   output.add_options()
   ("json,j", boost::program_options::value<boost::filesystem::path>(&c.jsonfile)->default_value("kmers.json.gz"), "output k-mers spectra in JSON")
-  ("mapx,x", boost::program_options::value<boost::filesystem::path>(&c.mapfilex)->default_value("kmers.map.x"), "output compressed binary forward k-mers hash map")
-  ("mapy,y", boost::program_options::value<boost::filesystem::path>(&c.mapfiley)->default_value("kmers.map.y"), "output compressed binary reverse complement k-mers hash map")
-
+  ("map,m", boost::program_options::value<boost::filesystem::path>(&c.mapfile)->default_value("kmers.map"), "output binary k-mers hash map")
   ;
 
   boost::program_options::options_description hidden("Hidden options");
@@ -187,9 +185,8 @@ int kmers(int argc, char **argv)
     return 0;
   }
 
-  sparse_hash_map<std::string, int> hashmapx;
-  sparse_hash_map<std::string, int> hashmapy;
-  std::unordered_map<int,int> khash; //this stores kmerspectra
+  sparse_hash_map<std::string, int> hashmap;
+  sparse_hash_map<int,int> khash; //this stores kmerspectra
   kseq_t *seq;
   gzFile fp;
   int n = 0;
@@ -251,10 +248,10 @@ int kmers(int argc, char **argv)
 
             }
 
-            hashmapx[forw] ++;
+            hashmap[forw] ++;
             std::reverse(forw.begin(),forw.end());
             std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-            hashmapy[forw] ++;
+            hashmap[forw] ++;
 
           }
 
@@ -316,10 +313,12 @@ int kmers(int argc, char **argv)
 
         }
 
-        hashmapx[forw] ++;
+        hashmap[forw] ++;
+        std::cout << forw ;
         std::reverse(forw.begin(),forw.end());
         std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-        hashmapy[forw] ++;
+        hashmap[forw] ++;
+        std::cout << ": " << forw << std::endl;
       
       }
 
@@ -332,16 +331,10 @@ int kmers(int argc, char **argv)
 
   now = boost::posix_time::second_clock::local_time();
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;  
-  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Found " << hashmapx.size() + hashmapy.size()<< " unique k-mers in " << n << " sequences" << std::endl;
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Found " << hashmap.size() << " unique k-mers in " << n << " sequences" << std::endl;
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing k-mers spectra \"" << c.jsonfile.string().c_str() << "\"" << std::endl;
 
-  for (auto it = hashmapx.cbegin(); it != hashmapx.cend(); ++it) {
-
-    khash[(*it).second] ++;
-
-  }
-
-  for (auto it = hashmapy.cbegin(); it != hashmapy.cend(); ++it) {
+  for (auto it = hashmap.cbegin(); it != hashmap.cend(); ++it) {
 
     khash[(*it).second] ++;
 
@@ -365,15 +358,24 @@ int kmers(int argc, char **argv)
 
   now = boost::posix_time::second_clock::local_time();
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;
-  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing compressed binary k-mers hash maps \"" << c.mapfilex.string().c_str() << "\" and \"" <<  c.mapfiley.string().c_str() << "\"" << std::endl;
+  std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Storing binary k-mers hash map \"" << c.mapfile.string().c_str() << "\"" << std::endl;
 
-  FILE *out1 = fopen(c.mapfilex.string().c_str(), "wb");
-  hashmapx.serialize(FileSerializer(), out1);
-  fclose(out1);
+  FILE *out = fopen(c.mapfile.string().c_str(), "wb");
+  hashmap.serialize(FileSerializer(), out);
+  fclose(out);
 
-  FILE *out2 = fopen(c.mapfiley.string().c_str(), "wb");
-  hashmapx.serialize(FileSerializer(), out2);
-  fclose(out2);
+  //recheck
+
+  //sparse_hash_map<std::string, int> hashtest;
+  //FILE *in = fopen(c.mapfile.string().c_str(), "rb");
+  //hashtest.unserialize(FileSerializer(), in);
+  //fclose(in);
+
+  //for (auto it = hashtest.cbegin(); it != hashtest.cend(); ++it) {
+
+    //std::cout << (*it).first << ":" << (*it).second << std::endl;
+
+  //}
 
   now = boost::posix_time::second_clock::local_time();
   std::cout << '[' << boost::posix_time::to_simple_string(now) << "] Done" << std::endl;
