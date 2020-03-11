@@ -275,12 +275,12 @@ int kmers(int argc, char **argv)
 
             keyfw=danb_hash(forw.c_str());
             hashmap[keyfw] ++;
-            std::cout << forw << ":"<< keyfw << std::endl;
+            //std::cout << forw << ":"<< keyfw << std::endl;
             std::reverse(forw.begin(),forw.end());
             std::transform(forw.begin(), forw.end(), forw.begin(), complement);
             keyrc=danb_hash(forw.c_str());
             hashmap[keyrc] ++;
-            std::cout << forw << ":"<< keyrc << std::endl;
+            //std::cout << forw << ":"<< keyrc << std::endl;
 
           }
 
@@ -350,12 +350,12 @@ int kmers(int argc, char **argv)
 
         keyfw=danb_hash(forw.c_str());
         hashmap[keyfw] ++;
-        std::cout << forw << ":"<< keyfw << std::endl;
+        //std::cout << forw << ":"<< keyfw << std::endl;
         std::reverse(forw.begin(),forw.end());
         std::transform(forw.begin(), forw.end(), forw.begin(), complement);
         keyrc=danb_hash(forw.c_str());
         hashmap[keyrc] ++;
-        std::cout << forw << ":"<< keyrc << std::endl;
+        //std::cout << forw << ":"<< keyrc << std::endl;
       }
 
     }
