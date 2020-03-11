@@ -100,8 +100,8 @@ char complement(char n)
       return 'C';
     case 'C':
       return 'G';
-    case 'N':
-      return 'N';  
+    //case 'N': //excluding kmers with N makes this un-necessary
+      //return 'N';  
     default:
       throw std::domain_error("Invalid nucleotide.");
     }
@@ -121,6 +121,18 @@ int avgq(std::string const& s) {
 
 }
 
+
+unsigned danb_hash(const char *str) //excellent hash string function
+{
+  unsigned hash = 5381;
+  int c;
+
+  while (c = *str++)
+        
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+
+  return hash;
+}
 
 KSEQ_INIT(gzFile,gzread)
 
@@ -185,13 +197,14 @@ int kmers(int argc, char **argv)
     return 0;
   }
 
-  sparse_hash_map<std::string, int> hashmap;
+  sparse_hash_map<unsigned, int> hashmap;
   sparse_hash_map<int,int> khash; //this stores kmerspectra
   kseq_t *seq;
   gzFile fp;
   int n = 0;
   int klen,avgqual;
   std::string s,q,forw,qual;
+  unsigned keyfw,keyrc;
   boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
 
   if (vm.count("list")) {
@@ -234,7 +247,13 @@ int kmers(int argc, char **argv)
           for (int i = 0; i <= s.length() - klen; i++) {
 
             forw = s.substr(i,klen);
-            
+
+            if (forw.find('N') != std::string::npos) {
+
+              continue;
+
+            }
+
             if (seq->is_fastq) {
 
               qual = q.substr(i,klen);
@@ -248,10 +267,14 @@ int kmers(int argc, char **argv)
 
             }
 
-            hashmap[forw] ++;
+            keyfw=danb_hash(forw.c_str());
+            hashmap[keyfw] ++;
+            std::cout << forw << ":"<< keyfw << std::endl;
             std::reverse(forw.begin(),forw.end());
             std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-            hashmap[forw] ++;
+            keyrc=danb_hash(forw.c_str());
+            hashmap[keyrc] ++;
+            std::cout << forw << ":"<< keyrc << std::endl;
 
           }
 
@@ -299,6 +322,12 @@ int kmers(int argc, char **argv)
       for (int i = 0; i <= s.length() - klen; i++) {
 
         forw = s.substr(i, klen);
+
+        if (forw.find('N') != std::string::npos) {
+
+          continue;
+
+        }
         
         if (seq->is_fastq) {
 
@@ -313,13 +342,14 @@ int kmers(int argc, char **argv)
 
         }
 
-        hashmap[forw] ++;
-        std::cout << forw ;
+        keyfw=danb_hash(forw.c_str());
+        hashmap[keyfw] ++;
+        std::cout << forw << ":"<< keyfw << std::endl;
         std::reverse(forw.begin(),forw.end());
         std::transform(forw.begin(), forw.end(), forw.begin(), complement);
-        hashmap[forw] ++;
-        std::cout << ": " << forw << std::endl;
-      
+        keyrc=danb_hash(forw.c_str());
+        hashmap[keyrc] ++;
+        std::cout << forw << ":"<< keyrc << std::endl;
       }
 
     }
@@ -366,7 +396,7 @@ int kmers(int argc, char **argv)
 
   //recheck
 
-  //sparse_hash_map<std::string, int> hashtest;
+  //sparse_hash_map<unsigned, int> hashtest;
   //FILE *in = fopen(c.mapfile.string().c_str(), "rb");
   //hashtest.unserialize(FileSerializer(), in);
   //fclose(in);
