@@ -128,8 +128,8 @@ int avgq(std::string const& s) {
 
 }
 
-unsigned djb2_hash(const char *str) //excellent hash string function
-{
+unsigned djb2_hash(const char *str) { //excellent hash string function
+  
   unsigned hash = 5381;
   int c;
 
