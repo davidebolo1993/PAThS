@@ -128,7 +128,6 @@ int avgq(std::string const& s) {
 
 }
 
-
 unsigned danb_hash(const char *str) //excellent hash string function
 {
   unsigned hash = 5381;
@@ -205,7 +204,7 @@ int kmers(int argc, char **argv)
   }
 
   sparse_hash_map<unsigned, int> hashmap;
-  sparse_hash_map<int,int> khash; //this stores kmerspectra
+  sparse_hash_map<int,int> khash; //this stores kmers pectra
   kseq_t *seq;
   gzFile fp;
   int n = 0;
@@ -216,7 +215,7 @@ int kmers(int argc, char **argv)
 
   if (vm.count("list")) {
 
-    //open multiple input files (can be gzipped or not), one per time, and store unique k-mers for all of them in the same FM index
+    //open multiple input files (can be gzipped or not), one per time, and store unique k-mers for all of them in the same hash map
 
     std::ifstream inlist(c.infilelist.string().c_str());
 
