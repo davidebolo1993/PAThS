@@ -6,7 +6,7 @@ PWD = $(shell pwd)
 
 # Flags
 CXX=g++
-CXXFLAGS += -std=c++11 -O3 -DNDEBUG -I ${SDSL_ROOT}/include -pedantic -W -Wall
+CXXFLAGS += -std=c++11 -O3 -DNDEBUG -pedantic -W -Wall
 LDFLAGS += -lboost_iostreams -lboost_filesystem -lboost_system -lboost_program_options -lboost_date_time -lboost_serialization
 
 # Install dir

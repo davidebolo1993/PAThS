@@ -1,6 +1,8 @@
 #ifndef KMER_H
 #define KMER_H
 
+//system libraries
+
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -17,10 +19,15 @@
 #include <boost/iostreams/device/file.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
+
+//header files in folder
+
 #include "stdc++.h" 
 #include "kseq.h"
-#include "sparsepp/sparsepp/spp.h"
 
+//header-only sparsepp library
+
+#include "sparsepp/sparsepp/spp.h"
 using spp::sparse_hash_map;
 
 struct Container {    

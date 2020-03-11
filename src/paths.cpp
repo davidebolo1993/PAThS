@@ -1,5 +1,9 @@
+//system libraries
+
 #include <iostream>
 #include <fstream>
+
+//header files in folder
 
 #include "kmer.h"
 
