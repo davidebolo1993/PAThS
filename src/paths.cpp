@@ -14,7 +14,7 @@ inline void displayUsage() {
   std::cout << std::endl;
   std::cout << "Commands:" << std::endl;
   std::cout << std::endl;
-  std::cout << "    kmers       generate a FM index for k-mers in FASTQ/FASTA" << std::endl;
+  std::cout << "    kmers       generate a hash table of k-mers from FASTQ/FASTA" << std::endl;
   std::cout << std::endl;
   std::cout << std::endl;
 }
