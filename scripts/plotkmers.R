@@ -39,7 +39,7 @@ for (i in 1:length(paths)) {
 	maxkmer<-jnames[indpeak]
 	message("Peak is ", maxkmer, ":", peak)
 	estimate<-s/maxkmer
-	message("Estimated genome size is ", estimate)
+	message("Estimated transcriptome size is ", estimate)
 
 }
 
